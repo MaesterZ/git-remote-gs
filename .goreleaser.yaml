@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+version: 2
+
+project_name: git-remote-gs
+
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - main: .
+    binary: git-remote-gs
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    # Leaves out the storage client's unused gRPC transport, as the Makefile does
+    tags:
+      - disable_grpc_modules
+    # Setting ldflags replaces GoReleaser's defaults, so keep -s -w
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  # Listing files replaces GoReleaser's defaults; NOTICE.md must ship with the binary (Apache-2.0 section 4(d))
+  - files:
+      - LICENSE.md
+      - NOTICE.md
+      - README.md
+      - CHANGELOG.md
+    # Named as `uname -s` and `uname -m` print them, so installing needs no mapping: Linux-x86_64, Darwin-arm64, ...
+    name_template: >-
+      {{ .ProjectName }}-
+      {{- title .Os }}-
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if and (eq .Os "linux") (eq .Arch "arm64") }}aarch64
+      {{- else }}{{ .Arch }}{{ end }}
+
+checksum:
+  name_template: "{{ .ProjectName }}-checksums.txt"

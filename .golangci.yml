@@ -1,0 +1,72 @@
+---
+version: "2"
+run:
+  # Lint the code as it is built (see TAGS in the Makefile)
+  build-tags:
+    - disable_grpc_modules
+linters:
+  default: all
+  enable:
+    - gomodguard_v2
+  disable:
+    - depguard
+    - exhaustruct
+    - exhaustruct_v5
+    - forbidigo
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - godot
+    - gomodguard
+    - lll
+    - nlreturn
+    - prealloc
+    - whitespace
+    - wsl
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      # Repeated literals in test tables are clearer than shared constants
+      - path: _test\.go
+        linters:
+          - goconst
+      # Scenario tests read top to bottom; splitting them for complexity or name length hurts more than it helps
+      - path: _test\.go
+        linters:
+          - cyclop
+          - err113
+          - varnamelen
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+  settings:
+    varnamelen:
+      ignore-decls:
+        - w io.Writer
+        - r io.Reader
+        - wg sync.WaitGroup
+    wrapcheck:
+      # Errors from the project's own Store and Git interfaces already name the object or command
+      ignore-sig-regexps:
+        - ^func \(github\.com/MaesterZ/git-remote-gs/internal/(store\.Store|protocol\.Git)\)\.
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

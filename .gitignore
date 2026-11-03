@@ -1,0 +1,57 @@
+# Binaries for programs and plugins
+/git-remote-gs
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Code coverage profiles and other test artifacts
+*.out
+coverage.*
+!coverage.go
+*.coverprofile
+profile.cov
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# env file
+.env
+
+# Editor/IDE/AI
+.vscode/
+.claude/
+
+# OpenAI Codex
+AGENTS.md
+.codex/
+
+
+# Claude Code
+.claude/*.local.json
+.claude/**/*.log
+CLAUDE.local.md
+.claude/
+
+# Gemini CLI
+GEMINI.md
+gemini-debug.log
+.gemini-clipboard/
+.gemini/
+
+# Cursor AI
+.cursorrules
+.cursor/
+.cursor.json
+.cursor-settings.yaml
+
+# GoReleaser output
+dist/
