@@ -64,8 +64,6 @@ The prefix is mandatory in `gs://BUCKET/PREFIX[/...]`, one bucket can hold many 
   [partial](https://git-scm.com/docs/partial-clone) clones:** `--depth`, `--shallow-since`, `--shallow-exclude` and
   `--filter` are ignored, and you get a full clone.
 - **No [atomic pushes](https://git-scm.com/docs/git-push#Documentation/git-push.txt---atomic):** `--atomic` is refused.
-- **[`--force-with-lease`](https://git-scm.com/docs/git-push#Documentation/git-push.txt---force-with-lease) works**, but
-  git checks the lease when the push starts, not under the ref's lock.
 - **No [LFS](https://git-lfs.com/):** pushing a repo with LFS files fails.
 - **SHA-1 repositories only:** a push from a SHA-256 repository is refused.
 

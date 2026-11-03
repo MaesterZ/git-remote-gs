@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `--force-with-lease`: the helper answers git's `option cas` and checks the lease under the ref's lock, so a lease
+  push can't overwrite a push that landed after git listed the refs.
+- Signed build provenance for release archives and binaries, verifiable with `gh attestation verify`.
+
+### Fixed
+
+- A `--force-with-lease` push that rewrites history was always refused as non-fast-forward: git sends it unforced,
+  expecting the helper to honour the lease.
+- Non-fast-forward rejections found by the helper are reported as `non-fast forward`, the spelling git maps to its
+  own `[rejected]` status and `git pull` hint, instead of a `[remote rejected]` one.
+
 ## [1.0.0] - 2026-11-03
 
 First version: [`git-remote-s3`](https://github.com/awslabs/git-remote-s3) brought to Google Cloud Storage as a single
@@ -61,4 +76,5 @@ as [`git-remote-gcs`](https://github.com/Vicguin65/git-remote-gcs) stores them.
 - The `git-s3` management CLI (`doctor`, `protect`, `unprotect`, `delete-branch`): error messages print the
   `gcloud storage` command that fixes the problem
 
+[Unreleased]: https://github.com/MaesterZ/git-remote-gs/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/MaesterZ/git-remote-gs/releases/tag/v1.0.0

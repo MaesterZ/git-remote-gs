@@ -29,6 +29,8 @@ func reject(format string, args ...any) error {
 type pushCmd struct {
 	src, dst string
 	force    bool
+	leased   bool   // --force-with-lease: the ref must be at expect, checked under its lock
+	expect   string // expected remote SHA, or "" when the ref must not exist
 }
 
 // errNotRun is the result of a push the batch was interrupted before.
@@ -41,6 +43,8 @@ func (h *Helper) push(ctx context.Context, batch []string) []string {
 
 	for i, line := range batch {
 		cmds[i], errs[i] = parsePush(line)
+		cmds[i].expect, cmds[i].leased = h.leases[cmds[i].dst]
+		cmds[i].force = cmds[i].force || cmds[i].leased // git sends a leased push unforced: the lease is the permission
 	}
 
 	_ = parallel(ctx, len(batch), h.cfg.PushJobs, func(ctx context.Context, i int) error {
@@ -94,7 +98,7 @@ func parsePush(line string) (pushCmd, error) {
 
 func (h *Helper) pushOne(ctx context.Context, cmd pushCmd) error {
 	if cmd.src == "" {
-		return h.deleteRef(ctx, cmd.dst)
+		return h.deleteRef(ctx, cmd)
 	}
 
 	return h.pushRef(ctx, cmd)
@@ -106,8 +110,9 @@ func (h *Helper) pushRef(ctx context.Context, cmd pushCmd) error {
 		return err
 	}
 
-	if len(before.bundles) > 1 {
-		return h.multipleBundles(before.bundles)
+	err = h.checkRef(cmd, before)
+	if err != nil {
+		return err
 	}
 
 	sha, err := h.cfg.Git.Resolve(ctx, cmd.src)
@@ -159,8 +164,26 @@ func (h *Helper) checkFastForward(ctx context.Context, remoteSHA, sha string, fo
 	case forced:
 		return reject("protected branch, force push not allowed")
 	default:
-		return reject("non-fast-forward")
+		return reject("non-fast forward") // the spelling git maps to its own rejection and hint
 	}
+}
+
+// checkRef refuses a push to a ref with several bundles, or whose lease doesn't match it.
+func (h *Helper) checkRef(cmd pushCmd, before refState) error {
+	if len(before.bundles) > 1 {
+		return h.multipleBundles(before.bundles)
+	}
+
+	return checkLease(cmd, before)
+}
+
+// checkLease refuses a --force-with-lease push not matching the ref as read; the re-check under the lock keeps it so.
+func checkLease(cmd pushCmd, state refState) error {
+	if cmd.leased && state.sha() != cmd.expect {
+		return reject("stale info")
+	}
+
+	return nil
 }
 
 // bundleAndUpload creates the bundle before taking the lock, so the lock is held only for the upload.
@@ -277,7 +300,9 @@ func (h *Helper) initHead(ctx context.Context, ref string) {
 	}
 }
 
-func (h *Helper) deleteRef(ctx context.Context, dst string) error {
+func (h *Helper) deleteRef(ctx context.Context, cmd pushCmd) error {
+	dst := cmd.dst
+
 	head, err := h.readHead(ctx)
 	if err != nil {
 		return err
@@ -298,6 +323,11 @@ func (h *Helper) deleteRef(ctx context.Context, dst string) error {
 
 	if len(before.bundles) == 0 {
 		return reject("remote ref does not exist")
+	}
+
+	err = checkLease(cmd, before)
+	if err != nil {
+		return err
 	}
 
 	return h.withLock(ctx, dst, func(ctx context.Context) error {

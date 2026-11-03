@@ -46,6 +46,10 @@ linters:
       - builtin$
       - examples$
   settings:
+    dupword:
+      # "ok" repeats in remote helper replies, e.g. an option's "ok" then a push's "ok refs/heads/main"
+      ignore:
+        - ok
     varnamelen:
       ignore-decls:
         - w io.Writer

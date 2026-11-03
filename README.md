@@ -63,6 +63,14 @@ curl -fsSL "https://github.com/MaesterZ/git-remote-gs/releases/latest/download/g
 git-remote-gs --version
 ```
 
+To check the installed binary was built from this repository by its release workflow, use the
+[GitHub CLI](https://cli.github.com/) (releases after v1.0.0):
+
+```console
+gh attestation verify /usr/local/bin/git-remote-gs \
+  --repo MaesterZ/git-remote-gs --signer-workflow MaesterZ/git-remote-gs/.github/workflows/release.yml
+```
+
 ### Build from source
 
 ```console
@@ -201,7 +209,6 @@ git config --global protocol.gs.allow always
 | No [shallow clones](https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthdepth) | Silently ignored: you get a full clone. | `--depth=<depth>`<br>`--shallow-since=<date>`<br>`--shallow-exclude=<ref>` |
 | No [partial clones](https://git-scm.com/docs/partial-clone) | Ignored: every object is downloaded. | `--filter=<filter-spec>` |
 | No [atomic pushes](https://git-scm.com/docs/git-push#Documentation/git-push.txt---atomic) | Git refuses with `fatal: helper gs does not support --atomic`. | `--atomic` |
-| [Forced pushes with lease](https://git-scm.com/docs/git-push#Documentation/git-push.txt---force-with-lease) work, with a race | Git checks the lease against the refs it listed when the push started, not under the ref's lock, so a push landing in between can still be overwritten. | `--force-with-lease`<br>`--force-with-lease=<refname>`<br>`--force-with-lease=<refname>:<expect>` |
 | No [LFS](https://git-lfs.com/) | In a repo with LFS files, `git push` fails in git-lfs's pre-push hook with `batch request: missing protocol`. | `git lfs` |
 
 ---
@@ -223,6 +230,9 @@ The storage layout is the same as [`git-remote-s3`](https://github.com/awslabs/g
   is still the one listed, and a push that finds the ref changed under it reports it instead of `ok`.
 - **Deletes are safe.** Deleting a ref takes its lock, and refuses the branch the remote `HEAD` points at and protected
   branches; `git-remote-s3` deletes either without a lock.
+- **`--force-with-lease` works.** The helper checks the lease under the ref's lock, so a push landing in between can't
+  be overwritten. `git-remote-s3` answers `unsupported` to git's `option cas`, so a lease push that rewrites history is
+  refused there.
 - **Pushing a raw SHA works** (`git push origin <sha>:refs/heads/x`); `git-remote-s3` passes the SHA to
   `git bundle create`, which needs a ref name.
 - **Failed fetches fail.** A bundle that is missing, invalid or can't be unbundled stops the fetch with a message naming

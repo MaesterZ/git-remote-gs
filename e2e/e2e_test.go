@@ -439,8 +439,10 @@ func TestNonFastForwardAndForce(t *testing.T) {
 	mine := r.commit(b, "b.txt", "b\n")
 	r.git(b, "fetch", "-q")
 
+	// Git shows its own non-fast-forward rejection, with its hint, only for the status it recognises.
 	out := r.gitFails(b, "push", "origin", "main")
-	if !strings.Contains(out, "rejected") {
+	if !strings.Contains(out, "! [rejected]        main -> main (non-fast-forward)") ||
+		!strings.Contains(out, "Updates were rejected") {
 		t.Errorf("non-fast-forward push: %s", out)
 	}
 
@@ -456,6 +458,33 @@ func TestNonFastForwardAndForce(t *testing.T) {
 	}
 
 	r.fsck(a, b)
+}
+
+func TestForceWithLease(t *testing.T) {
+	t.Parallel()
+
+	r := newFakeRemote(t)
+	a := r.newRepo()
+	r.git(a, "push", "-q", "-u", "origin", "main")
+	base := r.git(a, "rev-parse", "HEAD")
+
+	theirs := r.commit(a, "a.txt", "a\n")
+	r.git(a, "push", "-q", "origin", "main")
+
+	// A lease naming a commit the remote has moved past is refused.
+	r.git(a, "reset", "-q", "--hard", base)
+	mine := r.commit(a, "b.txt", "b\n")
+
+	out := r.gitFails(a, "push", "--force-with-lease=main:"+base, "origin", "main")
+	if !strings.Contains(out, "(stale info)") {
+		t.Errorf("stale lease: %s", out)
+	}
+
+	r.assertRef("refs/heads/main", theirs)
+
+	// A lease naming the current remote commit rewrites it.
+	r.git(a, "push", "-q", "--force-with-lease=main:"+theirs, "origin", "main")
+	r.assertRef("refs/heads/main", mine)
 }
 
 func TestLocks(t *testing.T) {

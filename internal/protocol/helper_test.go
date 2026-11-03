@@ -570,7 +570,7 @@ func TestPushRejections(t *testing.T) {
 				h.git.commit(sha("remote"), "")
 				h.seed("refs/heads/main", sha("remote"))
 			},
-			want: "error refs/heads/main non-fast-forward",
+			want: "error refs/heads/main non-fast forward",
 		},
 		"remote commit unknown locally": {
 			line: "push refs/heads/main:refs/heads/main",
@@ -625,6 +625,99 @@ func TestPushRejections(t *testing.T) {
 				t.Errorf("rejected push changed the bucket: %v -> %v", before, after)
 			}
 		})
+	}
+}
+
+func TestLeases(t *testing.T) {
+	t.Parallel()
+
+	zero := strings.Repeat("0", 40)
+
+	tests := map[string]struct {
+		remote string // remote SHA, "" for no remote ref
+		input  string
+		want   string
+	}{
+		"matching lease forces, though git sends the push unforced": {
+			remote: sha("theirs"),
+			input:  "option cas refs/heads/main:" + sha("theirs") + "\npush refs/heads/main:refs/heads/main\n\n",
+			want:   "ok\nok refs/heads/main\n\n",
+		},
+		"stale lease": {
+			remote: sha("newer"),
+			input:  "option cas refs/heads/main:" + sha("theirs") + "\npush +refs/heads/main:refs/heads/main\n\n",
+			want:   "ok\nerror refs/heads/main stale info\n\n",
+		},
+		"must not exist, but does": {
+			remote: sha("theirs"),
+			input:  "option cas refs/heads/main:" + zero + "\npush +refs/heads/main:refs/heads/main\n\n",
+			want:   "ok\nerror refs/heads/main stale info\n\n",
+		},
+		"must not exist, and doesn't": {
+			input: "option cas refs/heads/main:" + zero + "\npush refs/heads/main:refs/heads/main\n\n",
+			want:  "ok\nok refs/heads/main\n\n",
+		},
+		"stale lease on delete": {
+			remote: sha("newer"),
+			input:  "option cas refs/heads/main:" + sha("theirs") + "\npush :refs/heads/main\n\n",
+			want:   "ok\nerror refs/heads/main stale info\n\n",
+		},
+		"lease applies to its batch only": {
+			remote: sha("newer"),
+			input: "option cas refs/heads/main:" + sha("theirs") + "\npush refs/heads/other:refs/heads/other\n\n" +
+				"push +refs/heads/main:refs/heads/main\n\n",
+			want: "ok\nok refs/heads/other\n\nok refs/heads/main\n\n",
+		},
+		"invalid": {
+			input: "option cas refs/heads/main:nothex\n",
+			want:  "error invalid cas \"refs/heads/main:nothex\"\n",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			h := newHarness(t)
+			h.git.commit(sha("mine"), "")
+			h.git.refs["refs/heads/main"] = sha("mine")
+			h.git.refs["refs/heads/other"] = sha("mine")
+
+			if tt.remote != "" {
+				h.seed("refs/heads/main", tt.remote)
+			}
+
+			if out := h.mustSession(tt.input); out != tt.want {
+				t.Fatalf("got %q, want %q\n%s", out, tt.want, h.stderr)
+			}
+		})
+	}
+}
+
+// TestLeaseRacedBeforeLock: a push landing after the lease check but before the lock still fails, as a stale remote.
+func TestLeaseRacedBeforeLock(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t)
+	h.git.commit(sha("mine"), "")
+	h.git.refs["refs/heads/main"] = sha("mine")
+	h.seed("refs/heads/main", sha("theirs"))
+
+	h.hooks.beforeWrite = func(name string) {
+		if strings.HasSuffix(name, "LOCK#.lock") {
+			h.hooks.beforeWrite = nil
+			h.seed("refs/heads/main", sha("newer"))
+			h.remove(h.loc.Key("refs/heads/main", sha("theirs")+".bundle"))
+		}
+	}
+
+	out := h.mustSession("option cas refs/heads/main:" + sha("theirs") + "\npush +refs/heads/main:refs/heads/main\n\n")
+	if out != "ok\nerror refs/heads/main stale remote, fetch and retry\n\n" {
+		t.Fatalf("push = %q", out)
+	}
+
+	if got := h.bundlesOf("refs/heads/main"); !slices.Equal(got, []string{sha("newer")}) {
+		t.Errorf("bundles = %v, the racing push's must survive", got)
 	}
 }
 
@@ -1062,7 +1155,7 @@ func TestProtectedRefs(t *testing.T) {
 
 			for line, want := range map[string]string{
 				"push +refs/heads/other:refs/heads/main": "error refs/heads/main protected branch, force push not allowed\n\n",
-				"push refs/heads/other:refs/heads/main":  "error refs/heads/main non-fast-forward\n\n",
+				"push refs/heads/other:refs/heads/main":  "error refs/heads/main non-fast forward\n\n",
 				"push :refs/heads/main":                  "error refs/heads/main refusing to delete a protected branch\n\n",
 				"push +refs/heads/c2:refs/heads/main":    "ok refs/heads/main\n\n",
 			} {

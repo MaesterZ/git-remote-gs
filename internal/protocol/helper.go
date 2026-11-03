@@ -51,6 +51,8 @@ var (
 	errBundleGone = errors.New("the ref was updated since it was listed: fetch again")
 
 	shaRe = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+	zeroSHA = strings.Repeat("0", 40) //nolint:mnd // a SHA-1 is 40 hex digits
 )
 
 // Git is the subset of git the helper needs; internal/git implements it with the git binary.
@@ -89,6 +91,8 @@ type Helper struct {
 	head string
 	// listed holds the bundles seen by the last list, whose sizes and generations fetch uses for ranged reads.
 	listed map[string]bundle
+	// leases holds the next push batch's --force-with-lease expectations by ref: a SHA, or "" for "must not exist".
+	leases map[string]string
 }
 
 // New returns a Helper, filling in defaults.
@@ -202,7 +206,10 @@ func (h *Helper) pushBatch(ctx context.Context, reader *bufio.Reader, out *bufio
 		return err
 	}
 
-	for _, result := range h.push(ctx, batch) {
+	results := h.push(ctx, batch)
+	h.leases = nil // git sends them again before each batch
+
+	for _, result := range results {
 		h.cfg.Log.Logf("> %s", result)
 		_, _ = out.WriteString(result + "\n")
 	}
@@ -246,10 +253,38 @@ func readBatch(reader *bufio.Reader, first, prefix string) ([]string, error) {
 
 func (h *Helper) option(line string) string {
 	name, value, _ := strings.Cut(strings.TrimPrefix(line, "option "), " ")
-	if name != "verbosity" {
+
+	switch name {
+	case "verbosity":
+		return h.optionVerbosity(value)
+	case "cas":
+		return h.optionCAS(value)
+	default:
 		return "unsupported"
 	}
+}
 
+// optionCAS records a --force-with-lease expectation, `<ref>:<sha>`; the push checks it under the ref's lock.
+func (h *Helper) optionCAS(value string) string {
+	ref, expect, ok := strings.CutLast(value, ":")
+	if !ok || !validRef(ref) || !shaRe.MatchString(expect) {
+		return "error invalid cas " + strconv.Quote(value)
+	}
+
+	if expect == zeroSHA {
+		expect = "" // the ref must not exist
+	}
+
+	if h.leases == nil {
+		h.leases = map[string]string{}
+	}
+
+	h.leases[ref] = expect
+
+	return "ok"
+}
+
+func (h *Helper) optionVerbosity(value string) string {
 	level, err := strconv.Atoi(value)
 	if err != nil {
 		return "error invalid verbosity " + strconv.Quote(value)
