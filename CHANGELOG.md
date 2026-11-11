@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-11
+
 ### Added
 
 - `--force-with-lease`: the helper answers git's `option cas` and checks the lease under the ref's lock, so a lease
@@ -80,5 +82,6 @@ as [`git-remote-gcs`](https://github.com/Vicguin65/git-remote-gcs) stores them.
 - The `git-s3` management CLI (`doctor`, `protect`, `unprotect`, `delete-branch`): error messages print the
   `gcloud storage` command that fixes the problem
 
-[Unreleased]: https://github.com/MaesterZ/git-remote-gs/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/MaesterZ/git-remote-gs/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/MaesterZ/git-remote-gs/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/MaesterZ/git-remote-gs/releases/tag/v1.0.0
