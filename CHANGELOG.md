@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Control characters in text from the bucket, such as a lock holder's host name, are shown as `?` in messages, so
+  they can't reach the terminal as escape sequences.
 - A `--force-with-lease` push that rewrites history was always refused as non-fast-forward: git sends it unforced,
   expecting the helper to honour the lease.
 - Non-fast-forward rejections found by the helper are reported as `non-fast forward`, the spelling git maps to its
