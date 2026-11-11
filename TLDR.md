@@ -54,7 +54,7 @@ The prefix is mandatory in `gs://BUCKET/PREFIX[/...]`, one bucket can hold many 
   `GIT_REMOTE_GS_LOCK_TTL` to change that.
 - **Protect a branch** against force pushes and deletion:
   `gcloud storage cp /dev/null 'gs://my-bucket/my-repo/refs/heads/main/PROTECTED#'`.
-- Set `GIT_REMOTE_GS_VERBOSE` to any value to log every step to stderr.
+- Log every step to stderr with `git push -v`, or set `GIT_REMOTE_GS_VERBOSE` to any value (it also prints the remote).
 
 ## Limits
 

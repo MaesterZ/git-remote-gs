@@ -93,6 +93,8 @@ type Helper struct {
 	listed map[string]bundle
 	// leases holds the next push batch's --force-with-lease expectations by ref: a SHA, or "" for "must not exist".
 	leases map[string]string
+	// up and down meter the uploads of the push batch and the downloads of the fetch batch in progress; nil when off.
+	up, down *Meter
 }
 
 // New returns a Helper, filling in defaults.
@@ -259,9 +261,25 @@ func (h *Helper) option(line string) string {
 		return h.optionVerbosity(value)
 	case "cas":
 		return h.optionCAS(value)
+	case "progress":
+		return h.optionProgress(value)
 	default:
 		return "unsupported"
 	}
+}
+
+// optionProgress turns the transfer meters on or off; git asks when its stderr is a terminal.
+func (h *Helper) optionProgress(value string) string {
+	switch value {
+	case "true":
+		h.cfg.Log.SetProgress(true)
+	case "false":
+		h.cfg.Log.SetProgress(false)
+	default:
+		return "error invalid progress " + strconv.Quote(value)
+	}
+
+	return "ok"
 }
 
 // optionCAS records a --force-with-lease expectation, `<ref>:<sha>`; the push checks it under the ref's lock.

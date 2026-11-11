@@ -302,9 +302,9 @@ func TestCapabilitiesAndOptions(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(t)
-	out := h.mustSession("capabilities\noption verbosity 2\noption progress true\noption verbosity x\n\n")
+	out := h.mustSession("capabilities\noption verbosity 2\noption progress true\noption progress maybe\noption verbosity x\n\n")
 
-	want := "*push\n*fetch\noption\n\nok\nunsupported\nerror invalid verbosity \"x\"\n"
+	want := "*push\n*fetch\noption\n\nok\nok\nerror invalid progress \"maybe\"\nerror invalid verbosity \"x\"\n"
 	if out != want {
 		t.Fatalf("got %q, want %q", out, want)
 	}

@@ -38,6 +38,11 @@ var errNotRun = reject("interrupted")
 
 // push runs the commands of a batch in parallel but independently, and returns one result line per command, in order.
 func (h *Helper) push(ctx context.Context, batch []string) []string {
+	meter := h.cfg.Log.Meter("Uploading")
+	h.up = meter
+
+	defer meter.Finish()
+
 	cmds := make([]pushCmd, len(batch))
 	errs := make([]error, len(batch))
 
@@ -201,6 +206,14 @@ func (h *Helper) bundleAndUpload(ctx context.Context, cmd pushCmd, sha string, b
 		return fmt.Errorf("create bundle: %w", err)
 	}
 
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("stat bundle: %w", err)
+	}
+
+	h.cfg.Log.Stage("Creating bundle", humanBytes(info.Size()))
+	h.up.AddTotal(info.Size())
+
 	return h.withLock(ctx, cmd.dst, func(ctx context.Context) error {
 		return h.uploadLocked(ctx, cmd, sha, path, before)
 	})
@@ -257,7 +270,7 @@ func (h *Helper) upload(ctx context.Context, name, path string) error {
 
 	h.cfg.Log.Logf("upload %s", h.cfg.Location.URL(name))
 
-	_, err = h.cfg.Store.WriteIfAbsent(ctx, name, file, "application/octet-stream")
+	_, err = h.cfg.Store.WriteIfAbsent(ctx, name, h.up.Reader(file), "application/octet-stream")
 	if errors.Is(err, store.ErrPrecondition) {
 		return reject("stale remote, fetch and retry: %s appeared during the push", h.cfg.Location.URL(name))
 	}

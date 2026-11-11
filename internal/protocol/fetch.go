@@ -24,6 +24,11 @@ func (h *Helper) fetch(ctx context.Context, batch []string) error {
 		return err
 	}
 
+	meter := h.cfg.Log.Meter("Downloading")
+	h.down = meter
+
+	defer meter.Finish()
+
 	// Branches go first: their history often holds other refs' objects (merged branches, tags), which then need no download.
 	branches, rest := partition(jobs, func(job fetchJob) bool { return strings.HasPrefix(job.ref, headsPrefix) })
 
@@ -169,7 +174,7 @@ func (h *Helper) download(ctx context.Context, job fetchJob, name string, file *
 	if !ok || known.sha != job.sha || known.obj.Size < minParts*h.cfg.PartSize {
 		h.cfg.Log.Logf("download %s", h.cfg.Location.URL(name))
 
-		_, err := h.cfg.Store.Read(ctx, name, file)
+		_, err := h.cfg.Store.Read(ctx, name, h.down.Writer(file))
 
 		return err
 	}
@@ -184,7 +189,9 @@ func (h *Helper) download(ctx context.Context, job fetchJob, name string, file *
 		offset := int64(i) * h.cfg.PartSize
 		length := min(h.cfg.PartSize, obj.Size-offset)
 
-		return h.cfg.Store.ReadRange(ctx, obj.Name, obj.Generation, offset, length, io.NewOffsetWriter(file, offset))
+		part := h.down.Writer(io.NewOffsetWriter(file, offset))
+
+		return h.cfg.Store.ReadRange(ctx, obj.Name, obj.Generation, offset, length, part)
 	})
 }
 

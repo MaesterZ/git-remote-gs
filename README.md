@@ -194,9 +194,16 @@ git config --global protocol.gs.allow always
 | Variable                    | Default | Effect                                                                     |
 | --------------------------- | ------- | -------------------------------------------------------------------------- |
 | `GIT_REMOTE_GS_LOCK_TTL`    | `60`    | Seconds after which a push lock is considered stale and may be taken over |
-| `GIT_REMOTE_GS_VERBOSE`     | unset   | Any non-empty value logs every step to stderr, like `git push -v`          |
+| `GIT_REMOTE_GS_VERBOSE`     | unset   | Any non-empty value logs every step to stderr, and the remote at startup   |
 | `STORAGE_EMULATOR_HOST`     | unset   | `host:port` of a GCS emulator; used by the tests                           |
 | `GIT_REMOTE_GS_TEST_BUCKET` | unset   | `gs://BUCKET[/PREFIX]` for the optional real-bucket test                   |
+
+### Verbose output
+
+- `git push -v` logs each step to stderr: uploads, locks, deletes, and the HEAD update. The remote's URL isn't printed.
+- `GIT_REMOTE_GS_VERBOSE=1` does the same and also prints the remote at startup:
+  `git-remote-gs: remote gs://bucket/prefix, lock TTL 1m0s`.
+- Warnings and fatal errors print without either setting.
 
 ---
 

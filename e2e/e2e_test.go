@@ -693,6 +693,33 @@ func TestVerboseLogging(t *testing.T) {
 	}
 }
 
+// TestProgress checks the meters: shown with --progress on push and clone, silent without it.
+func TestProgress(t *testing.T) {
+	t.Parallel()
+
+	r := newFakeRemote(t)
+	a := r.newRepo()
+
+	quiet, err := r.cmd(a, nil, "push", "origin", "main")
+	if err != nil || strings.Contains(quiet, "Uploading") {
+		t.Errorf("quiet push showed progress (err=%v):\n%s", err, quiet)
+	}
+
+	r.commit(a, "x", "1\n")
+
+	pushed, err := r.cmd(a, nil, "push", "--progress", "origin", "main")
+	if err != nil || !regexp.MustCompile(`Creating bundle: \S+ \S+, done\.\s+.*Uploading: 100% \(\S+ \S+/\S+ \S+\) \| \S+ \S+/s, done\.`).MatchString(pushed) {
+		t.Errorf("push --progress showed no upload meter (err=%v):\n%s", err, pushed)
+	}
+
+	dir := filepath.Join(t.TempDir(), "clone")
+
+	cloned, err := r.cmd("", nil, "clone", "--progress", r.url, dir)
+	if err != nil || !regexp.MustCompile(`Downloading: \S+ \S+ \| \S+ \S+/s, done\.`).MatchString(cloned) {
+		t.Errorf("clone --progress showed no download meter (err=%v):\n%s", err, cloned)
+	}
+}
+
 // TestNoCredentials runs without an emulator or ADC: the helper must fail with the one-line hint, before any network call.
 func TestNoCredentials(t *testing.T) {
 	t.Parallel()

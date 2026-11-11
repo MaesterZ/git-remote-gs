@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--force-with-lease`: the helper answers git's `option cas` and checks the lease under the ref's lock, so a lease
   push can't overwrite a push that landed after git listed the refs.
 - Signed build provenance for release archives and binaries, verifiable with `gh attestation verify`.
+- Progress on push (`Creating bundle: …, done.`, then `Uploading: 54% (…) | …/s`) and fetch/clone (`Downloading: …`), shown when git asks for progress
+  (a terminal, or `--progress`).
 
 ### Fixed
 
