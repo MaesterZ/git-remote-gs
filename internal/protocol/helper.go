@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/MaesterZ/git-remote-gs/internal/store"
 )
@@ -560,7 +561,18 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-// oneLine flattens a message for the single-line protocol replies.
+// oneLine flattens a message for the single-line protocol replies, with control characters shown as '?'.
 func oneLine(s string) string {
-	return strings.Join(strings.Fields(s), " ")
+	return visible(strings.Join(strings.Fields(s), " "))
+}
+
+// visible replaces control characters, which remote text can carry, with '?' so they can't reach the terminal.
+func visible(text string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return '?'
+		}
+
+		return r
+	}, text)
 }

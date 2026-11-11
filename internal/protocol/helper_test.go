@@ -310,6 +310,40 @@ func TestCapabilitiesAndOptions(t *testing.T) {
 	}
 }
 
+func TestControlCharsShownAsQuestionMarks(t *testing.T) {
+	t.Parallel()
+
+	if got, want := oneLine("a\x1b[31m\nb\x07"), "a?[31m b?"; got != want {
+		t.Errorf("oneLine = %q, want %q", got, want)
+	}
+}
+
+// A lock holder from the bucket must not put escape sequences in the output.
+func TestLockHolderControlCharsHidden(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t)
+	h.git.commit(sha("c"), "")
+	h.git.refs["refs/heads/main"] = sha("c")
+
+	body, err := json.Marshal(lockInfo{Timestamp: float64(h.now.Add(-10 * time.Second).Unix()), Host: "evil\x1b[2J\nhost", PID: 7})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = h.mem.Put(h.loc.Key("refs/heads/main", "LOCK#.lock"), body, h.now.Add(-10*time.Second))
+
+	out := h.mustSession("push refs/heads/main:refs/heads/main\n\n")
+
+	if strings.Contains(out, "\x1b") {
+		t.Errorf("output carries an escape character: %q", out)
+	}
+
+	if !strings.Contains(out, "held by evil?[2J?host pid 7") {
+		t.Errorf("output %q does not show the holder with '?' for control characters", out)
+	}
+}
+
 func TestExitOnEOFAndBlankLine(t *testing.T) {
 	t.Parallel()
 

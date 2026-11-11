@@ -211,7 +211,7 @@ func (h *Helper) lockAge(data []byte, obj store.Object) (string, time.Duration) 
 		return "held by an unknown client for " + seconds(age), age
 	}
 
-	return fmt.Sprintf("held by %s pid %d for %s", info.Host, info.PID, seconds(age)), age
+	return fmt.Sprintf("held by %s pid %d for %s", visible(info.Host), info.PID, seconds(age)), age
 }
 
 func (h *Helper) lockBusy(name, holder string) error {
