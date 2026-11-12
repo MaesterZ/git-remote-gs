@@ -62,6 +62,8 @@ A pull request can merge into `main` only when all of these hold:
 - A code owner (see `.github/CODEOWNERS`) has approved the latest commit.
 - Every review conversation is resolved.
 
+GitHub does not let an author approve their own pull request. While the sole code owner is also the usual author, they merge their own pull requests with an admin override, which the branch protection allows.
+
 The history on `main` is linear. Force pushes and branch deletion on `main` are blocked.
 
 Reviewers look for correctness first, then tests, then clarity. A reviewer may ask you to split a large change; that is normal.
