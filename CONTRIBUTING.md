@@ -43,6 +43,10 @@ To run the store contract and a round trip against a real bucket, set up Applica
 6. Add a line under `## [Unreleased]` in `CHANGELOG.md` for anything users would notice.
 7. Open a pull request against `main`.
 
+### GitHub Actions lockfile
+
+Workflows pin actions by tag, and `.github/workflows/actions.lock` records the commit behind each tag. After you add or change a `uses:` line, run `gh actions-lock` (install it with `gh extension install github/gh-actions-lock --pin v0.4.1`) and commit the updated lockfile. The `verify-lockfile` workflow fails if the lockfile is out of date. Its `verify` check is required to merge. Run `gh actions-lock --verify-local` for the same check offline.
+
 ### Commit messages
 
 Use a short, imperative subject line that says what the change does, such as `Add progress meters for push`. Add a body only when the reason for the change is not obvious from the diff.
@@ -53,7 +57,7 @@ Pull requests are squash-merged, so the pull request title becomes the commit me
 
 A pull request can merge into `main` only when all of these hold:
 
-- The required checks pass: `build`, `lint`, `test (ubuntu-latest)` and `test (macos-latest)`.
+- The required checks pass: `build`, `lint`, `test (ubuntu-latest)`, `test (macos-latest)` and `verify`.
 - The branch is up to date with `main`.
 - A code owner (see `.github/CODEOWNERS`) has approved the latest commit.
 - Every review conversation is resolved.
